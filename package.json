@@ -1,6 +1,9 @@
 {
-  "name": "reason-table",
+  "name": "bs-retable",
   "version": "0.1.0",
+  "repository": "git@github.com:tmattio/retable.git",
+  "homepage": "https://github.com/tmattio/retable#readme",
+  "bugs": "https://github.com/tmattio/retable/issues",
   "scripts": {
     "build": "bsb -make-world",
     "start": "bsb -make-world -w",
@@ -8,9 +11,12 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "BuckleScript"
+    "reason",
+    "bucklescript",
+    "react",
+    "table"
   ],
-  "author": "",
+  "author": "Thibaut Mattio <thibaut.mattio@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "react": "^16.6.1",
@@ -18,7 +24,6 @@
     "reason-react": "^0.5.3"
   },
   "devDependencies": {
-    "@glennsl/bs-jest": "^0.4.5",
     "bs-platform": "^4.0.7"
   }
 }

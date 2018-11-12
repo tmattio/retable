@@ -1,6 +1,6 @@
-# ReasonTable
+# ReTable
 
-A sortable selectable *-table for Reason-React.
+A sortable selectable *table for ReasonReact.
 
 ## Usage
 
@@ -13,14 +13,14 @@ type president = {
 };
 
 module PresidentTable =
-  ReasonTable.Make({
+  ReTable.Make({
     type t = president;
     let getItemID = president => president.name;
     let columns = [
-      ReasonTable.textColumn("Name", el => el.name),
-      ReasonTable.intColumn("Year", el => el.year),
-      ReasonTable.textColumn("City", el => el.city),
-      ReasonTable.textColumn("State", el => el.state),
+      ReTable.textColumn("Name", el => el.name),
+      ReTable.intColumn("Year", el => el.year),
+      ReTable.textColumn("City", el => el.city),
+      ReTable.textColumn("State", el => el.state),
     ];
   });
 
@@ -41,6 +41,20 @@ let make = (_children: array(ReasonReact.reactElement)) => {
   ...component,
   render: _self => <PresidentTable data=presidents />,
 };
+```
+
+## Installation
+
+```shell
+yarn add bs-retable
+```
+
+Then add it to `bsconfig.json`
+
+```json
+"bs-dependencies": [
+  "bs-retable"
+]
 ```
 
 ## TODO
