@@ -3,76 +3,105 @@ type column('data) = {
   render: 'data => ReasonReact.reactElement,
 };
 
-type config('data) = {
-  toId: 'data => string,
-  columns: list(column('data)),
-};
-
-let column = (name: string, render: 'a => ReasonReact.reactElement) => {
+let column =
+    (name: string, render: 'a => ReasonReact.reactElement): column('a) => {
   name,
   render,
 };
 
-let textColumn = (name: string, render: 'a => string) => {
+let textColumn = (name: string, render: 'a => string): column('a) => {
   name,
   render: data => render(data) |> ReasonReact.string,
 };
 
-let intColumn = (name: string, render: 'a => int) => {
+let intColumn = (name: string, render: 'a => int): column('a) => {
   name,
   render: data => render(data) |> string_of_int |> ReasonReact.string,
 };
 
-let floatColumn = (name: string, render: 'a => float) => {
+let floatColumn = (name: string, render: 'a => float): column('a) => {
   name,
   render: data => render(data) |> string_of_float |> ReasonReact.string,
 };
 
-let viewHeader = columns => {
-  let header =
-    List.map(
-      el => <th key={el.name}> {el.name |> ReasonReact.string} </th>,
-      columns,
-    );
-
-  header |> Array.of_list |> ReasonReact.array;
+module type Config = {
+  type t;
+  let getItemID: t => string;
+  let columns: list(column(t));
 };
 
-let viewRow = (config: config('a), rowIndex: int, data: 'a) => {
-  let columns =
-    List.map(
-      el => {
-        let renderedData = el.render(data);
-        <td key={config.toId(data) ++ "-" ++ el.name}> renderedData </td>;
-      },
-      config.columns,
-    );
-  let component = columns |> Array.of_list |> ReasonReact.array;
+module Make = (Config: Config) => {
+  type item = Config.t;
 
-  <tr key={rowIndex |> string_of_int}> component </tr>;
-};
+  let viewHeader = columns => {
+    let header =
+      List.map(
+        el => <th key={el.name}> {el.name |> ReasonReact.string} </th>,
+        columns,
+      );
 
-let component = ReasonReact.statelessComponent("Table");
+    header |> Array.of_list |> ReasonReact.array;
+  };
 
-let make =
-    (
-      ~config: config('a),
-      ~data: list('a),
-      ~className: option(string)=?,
-      _children,
-    ) => {
-  ...component,
-  render: _self => {
-    let thead = viewHeader(config.columns);
+  let viewRow = (rowIndex: int, data: item) => {
+    let columns =
+      List.map(
+        el => {
+          let renderedData = el.render(data);
+          <td key={Config.getItemID(data) ++ "-" ++ el.name}>
+            renderedData
+          </td>;
+        },
+        Config.columns,
+      );
+    let component = columns |> Array.of_list |> ReasonReact.array;
 
-    let tbody =
-      List.mapi((i, el) => viewRow(config, i, el), data)
-      |> Array.of_list
-      |> ReasonReact.array;
+    <tr key={rowIndex |> string_of_int}> component </tr>;
+  };
 
-    <table ?className>
-      <thead> <tr> thead </tr> </thead>
-      <tbody> tbody </tbody>
-    </table>;
-  },
+  type action =
+    | SelectItem(Config.t)
+    | SelectAll;
+
+  type state = {
+    selectedItems: list(item),
+    allItemSelected: bool,
+  };
+
+  let component = ReasonReact.reducerComponent("Table");
+
+  let make = (~data: list(item), ~className: option(string)=?, _children) => {
+    ...component,
+
+    initialState: () => {selectedItems: [], allItemSelected: false},
+
+    reducer: (action, state) =>
+      ReasonReact.(
+        switch (action) {
+        | SelectAll => NoUpdate
+        | SelectItem(item) =>
+          let updatedSelectedItems =
+            Internal.removeOrAddItem(
+              ~item,
+              ~getItemID=Config.getItemID,
+              ~items=state.selectedItems,
+              (),
+            );
+          Update({...state, selectedItems: updatedSelectedItems});
+        }
+      ),
+
+    render: ({send, state}) => {
+      let thead = viewHeader(Config.columns);
+      let tbody =
+        List.mapi((i, el) => viewRow(i, el), data)
+        |> Array.of_list
+        |> ReasonReact.array;
+
+      <table ?className>
+        <thead> <tr> thead </tr> </thead>
+        <tbody> tbody </tbody>
+      </table>;
+    },
+  };
 };
