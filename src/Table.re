@@ -17,6 +17,13 @@ type tableData('data) =
   | Data(list('data))
   | SelectableData(selectableData('data));
 
+let isAllSelected = (data: tableData('a)): bool =>
+  switch (data) {
+  | Data(_) => false
+  | SelectableData({items}) =>
+    !List.exists(el => el.selected === false, items)
+  };
+
 let column =
     (name: string, render: 'a => ReasonReact.reactElement): column('a) => {
   name,
@@ -132,7 +139,7 @@ module Make = (Config: Config) => {
 
   type state = {
     items: tableData(item),
-    isAllChecked: bool,
+    isAllSelected: bool,
   };
 
   let component = ReasonReact.reducerComponent("Table");
@@ -145,14 +152,14 @@ module Make = (Config: Config) => {
       ) => {
     ...component,
 
+    willReceiveProps: ({state}) =>
+      state.items !== initialItems ?
+        {items: initialItems, isAllSelected: isAllSelected(initialItems)} :
+        state,
+
     initialState: () => {
       items: initialItems,
-      isAllChecked:
-        switch (initialItems) {
-        | Data(_) => false
-        | SelectableData({items}) =>
-          !List.exists(el => el.selected === false, items)
-        },
+      isAllSelected: isAllSelected(initialItems),
     },
 
     reducer: (action, state) => {
@@ -173,7 +180,7 @@ module Make = (Config: Config) => {
             List.map(
               (el: withSelection(item)) => {
                 ...el,
-                selected: !state.isAllChecked,
+                selected: !state.isAllSelected,
               },
               data.items,
             );
@@ -181,7 +188,7 @@ module Make = (Config: Config) => {
           UpdateWithSideEffects(
             {
               items: SelectableData({...data, items: updatedItems}),
-              isAllChecked: !state.isAllChecked,
+              isAllSelected: !state.isAllSelected,
             },
             callOnSelectCallback,
           );
@@ -214,7 +221,7 @@ module Make = (Config: Config) => {
           switch (state.items) {
           | Data(_) => viewHeader(Config.columns)
           | SelectableData(_) =>
-            viewSelectableHeader(Config.columns, state.isAllChecked, _ =>
+            viewSelectableHeader(Config.columns, state.isAllSelected, _ =>
               send(CheckAll)
             )
           }
