@@ -1,12 +1,10 @@
-# reason-table
+# ReasonTable
 
 A sortable selectable *-table for Reason-React.
 
 ## Usage
 
 ```reason
-open ReasonTable;
-
 type president = {
   name: string,
   year: int,
@@ -15,14 +13,14 @@ type president = {
 };
 
 module PresidentTable =
-  Table.Make({
+  ReasonTable.Make({
     type t = president;
     let getItemID = president => president.name;
     let columns = [
-      Table.textColumn("Name", el => el.name),
-      Table.intColumn("Year", el => el.year),
-      Table.textColumn("City", el => el.city),
-      Table.textColumn("State", el => el.state),
+      ReasonTable.textColumn("Name", el => el.name),
+      ReasonTable.intColumn("Year", el => el.year),
+      ReasonTable.textColumn("City", el => el.city),
+      ReasonTable.textColumn("State", el => el.state),
     ];
   });
 
