@@ -43,6 +43,8 @@ let make = (_children: array(ReasonReact.reactElement)) => {
 };
 ```
 
+For more usages examples, see the [examples](./examples) folder.
+
 ## Installation
 
 ```shell
