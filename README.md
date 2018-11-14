@@ -39,7 +39,7 @@ let component = ReasonReact.statelessComponent(__MODULE__);
 
 let make = (_children: array(ReasonReact.reactElement)) => {
   ...component,
-  render: _self => <PresidentTable data=Data(presidents) />,
+  render: _self => <PresidentTable data=presidents />,
 };
 ```
 
@@ -63,15 +63,13 @@ Then add it to `bsconfig.json`
 
 I went through a lot of design phase for the selection of components. The table data is a parametrized type, and so it is impossible to store it in a state. Alternative solutions were to store the IDs of the items, or delegate the selection state to the user. The former is a less-than optimal solution and the latter gives a really bad UX.
 
-**Q: Why a union type on the data?**
-
-I have to admit that the API is less elegant with a union type (i.e. `Data | SelectableData`) as a parameter, but other solutions allowed impossible states to happen and it would be a shame to use a language that can forbid impossible states without doing so...
-
-For instance, let's say we accept a parameter `~onSelect: list('a) => unit=?`. If the parameter is `None`, the table is not selectable, otherwise, it is. In this case, we could use two fields in the state and use on or the other depending on the value of `onSelect`, the API would be cleaner, but the code not so much. This is obviously not the only solution, but I found all the solutions I tried without a union type a bit too hacky.
-
 ## TODO
 
 - [X] Implement selection
 - [ ] Implement sorting
 - [ ] Implement pagination
 - [ ] Implement filtering
+
+**onSelect callback**
+
+When providing selectable data, the callback sends the list of selected items. This appeared to be a good solution, but pose a problem when the parent component is a reducer component, as we need to repopulate the list of selected data

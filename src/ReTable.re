@@ -3,26 +3,30 @@ type column('data) = {
   render: 'data => ReasonReact.reactElement,
 };
 
-type withSelection('data) = {
+type items('data) = list('data);
+
+type itemWithSelection('data) = {
   item: 'data,
   selected: bool,
 };
 
-type selectableData('data) = {
-  items: list(withSelection('data)),
+type itemsWithSelection('data) = {
+  items: list(itemWithSelection('data)),
   onSelect: list('data) => unit,
+  isAllSelected: bool,
 };
 
 type tableData('data) =
-  | Data(list('data))
-  | SelectableData(selectableData('data));
+  | Data(items('data))
+  | DataWithSelection(itemsWithSelection('data));
 
-let isAllSelected = (data: tableData('a)): bool =>
-  switch (data) {
-  | Data(_) => false
-  | SelectableData({items}) =>
-    !List.exists(el => el.selected === false, items)
-  };
+type selectionConfig('data) =
+  | NotSelectable
+  | Selectable(list('data) => unit)
+  | SelectableWithInitialState(list('data) => unit, 'data => bool);
+
+let isAllItemsSelected = (data: list(itemWithSelection('data))): bool =>
+  !List.exists(el => el.selected === false, data);
 
 let column =
     (name: string, render: 'a => ReasonReact.reactElement): column('a) => {
@@ -107,7 +111,7 @@ module Make = (Config: Config) => {
   };
 
   let viewSelectableRow =
-      (rowIndex: int, onCheck: item => unit, data: withSelection(item)) => {
+      (rowIndex: int, onCheck: item => unit, data: itemWithSelection(item)) => {
     let columns =
       List.map(
         el => {
@@ -137,78 +141,87 @@ module Make = (Config: Config) => {
     | CheckItem(Config.t)
     | CheckAll;
 
-  type state = {
-    items: tableData(item),
-    isAllSelected: bool,
-  };
+  type state = tableData(item);
 
   let component = ReasonReact.reducerComponent("Table");
 
   let make =
       (
-        ~data as initialItems: tableData(item),
+        ~data as initialItems: list(item),
+        ~selectionConfig: selectionConfig(item)=NotSelectable,
         ~className: option(string)=?,
         _children,
       ) => {
     ...component,
 
-    willReceiveProps: ({state}) =>
-      state.items !== initialItems ?
-        {items: initialItems, isAllSelected: isAllSelected(initialItems)} :
-        state,
+    /* TODO(tmattio): Implement state update on receive props */
+    willReceiveProps: ({state}) => state,
 
-    initialState: () => {
-      items: initialItems,
-      isAllSelected: isAllSelected(initialItems),
-    },
+    initialState: () =>
+      switch (selectionConfig) {
+      | NotSelectable => Data(initialItems)
+      | Selectable(callback) =>
+        DataWithSelection({
+          items: List.map(el => {item: el, selected: false}, initialItems),
+          onSelect: callback,
+          isAllSelected: false,
+        })
+      | SelectableWithInitialState(callback, initFunction) =>
+        let itemsWithSelection =
+          List.map(
+            el => {item: el, selected: initFunction(el)},
+            initialItems,
+          );
+
+        DataWithSelection({
+          items: itemsWithSelection,
+          onSelect: callback,
+          isAllSelected: isAllItemsSelected(itemsWithSelection),
+        });
+      },
 
     reducer: (action, state) => {
-      let callOnSelectCallback =
-          (self: ReasonReact.self('state, 'retainedProps, 'action)): unit =>
-        switch (self.state.items) {
-        | SelectableData(data) =>
-          let items = List.map(el => el.item, data.items);
-          data.onSelect(items);
-        | _ => ()
-        };
+      let callOnSelectCallback = _ => ();
 
       ReasonReact.(
-        switch (action, state.items) {
+        switch (action, state) {
         | (_, Data(_)) => NoUpdate
-        | (CheckAll, SelectableData(data)) =>
+        | (CheckAll, DataWithSelection({items, isAllSelected, onSelect})) =>
           let updatedItems =
             List.map(
-              (el: withSelection(item)) => {
+              (el: itemWithSelection(item)) => {
                 ...el,
-                selected: !state.isAllSelected,
+                selected: !isAllSelected,
               },
-              data.items,
+              items,
             );
 
           UpdateWithSideEffects(
-            {
-              items: SelectableData({...data, items: updatedItems}),
-              isAllSelected: !state.isAllSelected,
-            },
+            DataWithSelection({
+              items: updatedItems,
+              isAllSelected: !isAllSelected,
+              onSelect,
+            }),
             callOnSelectCallback,
           );
-        | (CheckItem(item), SelectableData(data)) =>
+        | (CheckItem(item), DataWithSelection({items, onSelect})) =>
           let updatedItems =
             List.map(
-              (el: withSelection(item)) =>
+              (el: itemWithSelection(item)) =>
                 if (Config.getItemID(item) === Config.getItemID(el.item)) {
                   {...el, selected: !el.selected};
                 } else {
                   el;
                 },
-              data.items,
+              items,
             );
 
           UpdateWithSideEffects(
-            {
-              ...state,
-              items: SelectableData({...data, items: updatedItems}),
-            },
+            DataWithSelection({
+              items: updatedItems,
+              isAllSelected: isAllItemsSelected(updatedItems),
+              onSelect,
+            }),
             callOnSelectCallback,
           );
         }
@@ -218,10 +231,10 @@ module Make = (Config: Config) => {
     render: ({send, state}) => {
       let thead =
         (
-          switch (state.items) {
+          switch (state) {
           | Data(_) => viewHeader(Config.columns)
-          | SelectableData(_) =>
-            viewSelectableHeader(Config.columns, state.isAllSelected, _ =>
+          | DataWithSelection({isAllSelected}) =>
+            viewSelectableHeader(Config.columns, isAllSelected, _ =>
               send(CheckAll)
             )
           }
@@ -231,9 +244,9 @@ module Make = (Config: Config) => {
 
       let tbody =
         (
-          switch (state.items) {
+          switch (state) {
           | Data(data) => List.mapi((i, el) => viewRow(i, el), data)
-          | SelectableData({items}) =>
+          | DataWithSelection({items}) =>
             List.mapi(
               (i, el) =>
                 viewSelectableRow(i, item => send(CheckItem(item)), el),
