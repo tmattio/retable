@@ -63,13 +63,14 @@ Then add it to `bsconfig.json`
 
 I went through a lot of design phase for the selection of components. The table data is a parametrized type, and so it is impossible to store it in a state. Alternative solutions were to store the IDs of the items, or delegate the selection state to the user. The former is a less-than optimal solution and the latter gives a really bad UX.
 
+**Q: How does it deal with the updates of the parent components?**
+
+A problem occurs when the parent component re-renders. To solve this issue, we match previous items in the state of the table to new ones. For instance, if you have a selectable table with an option to fetch more data from the server, when the new data is received and sent to the table, we try to match previous item ID to new ones so that previously selected items keep their state.
+
+
 ## TODO
 
 - [X] Implement selection
 - [ ] Implement sorting
 - [ ] Implement pagination
 - [ ] Implement filtering
-
-**onSelect callback**
-
-When providing selectable data, the callback sends the list of selected items. This appeared to be a good solution, but pose a problem when the parent component is a reducer component, as we need to repopulate the list of selected data

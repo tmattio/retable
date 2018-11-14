@@ -154,8 +154,84 @@ module Make = (Config: Config) => {
       ) => {
     ...component,
 
-    /* TODO(tmattio): Implement state update on receive props */
-    willReceiveProps: ({state}) => state,
+    willReceiveProps: ({state}) =>
+      switch (selectionConfig, state) {
+      | (NotSelectable, _) => Data(initialItems)
+      | (Selectable(callback), Data(_)) =>
+        let itemsWithSelection =
+          List.map(el => {item: el, selected: false}, initialItems);
+
+        DataWithSelection({
+          items: itemsWithSelection,
+          onSelect: callback,
+          isAllSelected: isAllItemsSelected(itemsWithSelection),
+        });
+      | (SelectableWithInitialState(callback, initFunction), Data(_)) =>
+        let itemsWithSelection =
+          List.map(
+            el => {item: el, selected: initFunction(el)},
+            initialItems,
+          );
+
+        DataWithSelection({
+          items: itemsWithSelection,
+          onSelect: callback,
+          isAllSelected: isAllItemsSelected(itemsWithSelection),
+        });
+      | (Selectable(callback), DataWithSelection({items})) =>
+        let itemsWithSelection =
+          List.map(
+            (el: item) => {
+              item: el,
+              selected:
+                switch (
+                  List.find(
+                    (i: itemWithSelection(item)) =>
+                      Config.getItemID(i.item) === Config.getItemID(el),
+                    items,
+                  )
+                ) {
+                | item => item.selected
+                | exception Not_found => false
+                },
+            },
+            initialItems,
+          );
+
+        DataWithSelection({
+          items: itemsWithSelection,
+          onSelect: callback,
+          isAllSelected: isAllItemsSelected(itemsWithSelection),
+        });
+      | (
+          SelectableWithInitialState(callback, initFunction),
+          DataWithSelection({items}),
+        ) =>
+        let itemsWithSelection =
+          List.map(
+            (el: item) => {
+              item: el,
+              selected:
+                switch (
+                  List.find(
+                    (i: itemWithSelection(item)) =>
+                      Config.getItemID(i.item) === Config.getItemID(el),
+                    items,
+                  )
+                ) {
+                | item => item.selected
+                | exception Not_found => initFunction(el)
+                },
+            },
+            initialItems,
+          );
+
+        DataWithSelection({
+          items: itemsWithSelection,
+          onSelect: callback,
+          isAllSelected: isAllItemsSelected(itemsWithSelection),
+        });
+      },
 
     initialState: () =>
       switch (selectionConfig) {
